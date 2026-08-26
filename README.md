@@ -1,47 +1,57 @@
 # Spooks — Browser Interrogation
 
-A self-contained privacy-education webpage that demonstrates how much an ordinary browser can reveal before a site asks for permission, then offers one deeper-scan button for permission-gated capabilities.
+A privacy-education GitHub Pages demo showing how much an ordinary browser can reveal before a site asks for permission, followed by one deeper-scan button for permission-gated capabilities.
 
 ## Privacy model
 
-The application is intentionally contained in a single `index.html` file.
+Spooks is a static client-side application. GitHub Pages necessarily receives normal requests for the HTML, CSS and JavaScript files and can therefore see ordinary request metadata such as the visitor's IP address.
+
+The scanner itself has:
 
 - no analytics
-- no remote JavaScript
-- no CDN assets
+- no third-party APIs or CDNs
 - no external fonts or images
+- no tracking pixels
 - no `fetch()` or XHR calls
 - no WebSockets
 - no cookies set by the scanner
 - no `localStorage`, `sessionStorage`, or IndexedDB writes
 - no server-side collection code
 
-GitHub Pages must still receive the normal HTTPS request needed to serve the page, so GitHub may receive ordinary request metadata such as the visitor's IP address. Values discovered by the scanner are displayed locally and are not deliberately transmitted by the application.
+No discovered device value is deliberately placed into a network request. Scan results are calculated and displayed locally.
 
 ## Passive scan
 
-Depending on browser support, the page probes browser/OS clues, locale and timezone, screen and viewport geometry, display preferences, touch/pointer capabilities, logical CPU threads, approximate memory, WebGL/WebGPU data, canvas and offline-audio rendering fingerprints, common-font inference, connection information, local WebRTC ICE candidates without STUN/TURN servers, storage quota estimates, battery information, media/codecs, permission states and browser capability flags.
+Depending on browser support, Spooks probes browser and OS clues, locale and timezone, screen and viewport geometry, display preferences, touch and pointer capabilities, CPU threads and approximate memory, refresh cadence, graphics/WebGL/WebGPU details, canvas and offline-audio rendering fingerprints, a fixed-list font inference test, storage quota, battery and network information, codecs and voices, media-device counts, connected gamepads, browser capability surfaces, permission states, referrer/navigation clues, and motion/orientation where a browser exposes them without a prompt.
 
-Public IP lookup is deliberately excluded because doing it reliably would require contacting another service.
+The **Fingerprint / Browser shadow** is a full SHA-256 produced locally from a stable set of permissionless traits. It demonstrates how individually harmless browser properties can combine into something that feels like an identifier. It is not saved or transmitted.
+
+Public IP lookup is deliberately excluded because doing that reliably would require contacting another service.
 
 ## Deeper scan
 
-The single **WILL YOU LET ME FIND OUT MORE?** button starts the permission-gated probes supported by the current browser. The browser may still display multiple permission prompts because these are separate security boundaries.
+The single **WILL YOU LET ME FIND OUT MORE?** button starts every supported deeper probe that can reasonably be requested from one user action. Browsers may still show several prompts because location, camera, microphone, motion sensors, clipboard access and other capabilities are separate security boundaries.
 
 Potential deeper results include:
 
 - precise geolocation
-- camera and microphone device/track metadata
-- motion and orientation sensor readings
+- camera metadata and capabilities
+- microphone metadata and capabilities
+- one locally displayed camera still
+- motion and orientation readings
 - clipboard text
 - installed local font metadata
 - multi-screen/window-management details
 - idle and screen-lock state
-- higher-entropy User-Agent Client Hints
+- high-entropy User-Agent Client Hints
 
-Camera and microphone streams are stopped immediately after metadata inspection. The application does not read camera frames or microphone samples.
+Camera and microphone access are requested separately. If camera permission is granted, Spooks intentionally captures **one camera frame** and displays it locally as an in-memory JPEG data URL. It is not uploaded or saved and disappears when the page is refreshed or closed. The camera stream is then stopped.
 
-Device/file pickers such as USB, Serial, HID, Bluetooth, files, contacts and screen sharing are intentionally not opened automatically because those APIs require the user to select a specific thing rather than simply grant a general permission.
+Microphone permission is metadata-only. No microphone audio sample is read, recorded or stored. The microphone stream is stopped after its settings and capabilities have been inspected.
+
+Media settings and capabilities are translated into human-readable descriptions such as active resolution, frame rate, facing direction, sample rate, channel count, echo cancellation and supported ranges rather than displaying raw JavaScript objects.
+
+USB, Serial, HID, Bluetooth device choosers, files/folders, contacts and screen-capture pickers are not forced automatically because those APIs require the user to select a specific thing rather than simply grant a general permission.
 
 ## GitHub Pages
 
@@ -53,4 +63,4 @@ In the repository:
 4. Select `main` and `/ (root)`.
 5. Save.
 
-The root `index.html` is then the site entry point.
+The root `index.html` is the site entry point.
