@@ -11,14 +11,6 @@
     collectedRemarks.push(message);
   };
 
-  const alwaysCollapsed = new Set([
-    'Browser & OS',
-    'Locale & time',
-    'Motion & orientation',
-    'Closed / unsupported doors',
-    'Camera & microphone metadata'
-  ]);
-
   S.render = (root, data) => {
     const previouslyOpen = new Set([...root.querySelectorAll('details[open]')].map(d => d.dataset.group));
     root.textContent = '';
@@ -28,16 +20,11 @@
       groups.get(f.group).push(f);
     }
 
-    let autoOpened = 0;
     for (const [group, rows] of groups) {
       const details = document.createElement('details');
       details.className = 'group';
       details.dataset.group = group;
       if (previouslyOpen.has(group)) details.open = true;
-      else if (!alwaysCollapsed.has(group) && autoOpened < 2) {
-        details.open = true;
-        autoOpened++;
-      }
 
       const summary = document.createElement('summary');
       const title = document.createElement('span');
