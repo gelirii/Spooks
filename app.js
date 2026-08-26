@@ -83,21 +83,21 @@
     let end = 0;
 
     while (end < lines.length) {
-      end = Math.min(lines.length, end + 4);
+      end = Math.min(lines.length, end + 2);
       const start = Math.max(0, end - visible);
       const slice = lines.slice(start, end);
       sourceCode.textContent = slice.join('\n');
       sourceNumbers.textContent = slice.map((_, i) => String(start + i + 1).padStart(4, ' ')).join('\n');
-      await sleep(10);
+      await sleep(32);
     }
 
-    await sleep(180);
+    await sleep(320);
     sourceStage.classList.add('stage-out');
-    await sleep(220);
+    await sleep(260);
     sourceStage.hidden = true;
     chatStage.hidden = false;
     chatStage.classList.add('stage-in');
-    await sleep(180);
+    await sleep(220);
   }
 
   async function waitUntil(test, timeout = 6500, interval = 40) {
@@ -128,6 +128,7 @@
       chatTerminal.scrollTop = chatTerminal.scrollHeight;
       const jitter = ch === ' ' ? 0 : Math.floor(Math.random() * 11) - 5;
       await sleep(Math.max(7, charDelay + jitter));
+      if (ch === '.') await sleep(240);
     }
     cursor.remove();
     await sleep(pauseAfter);
@@ -261,7 +262,7 @@
     }
 
     await typeLine("You haven't given me permission to know anything yet.", 1100, 28);
-    await typeLine("I'm going to see what your browser gives away anyway.", 1250, 25);
+    await typeLine("I'm going to see what your browser gives away anyway.", 4000, 25);
   }
 
   async function revealDossier() {
