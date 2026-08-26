@@ -14,17 +14,25 @@
   <script defer src="deep.js"></script>
   <script defer src="app.js"></script>
 </head>
-<body>
-  <div class="wrap">
-    <header class="hero">
-      <div class="eyebrow">SPOOKS // LOCAL DEVICE INTERROGATION // PASSIVE SCAN</div>
-      <h1 id="heroTitle">Good evening.</h1>
-      <div class="identity-line" id="identityLine">Fingerprint CALCULATING…</div>
-      <p class="lede">You have not given me permission to know anything yet. I am going to see what your browser gives away anyway.</p>
-      <div class="hero-status"><span class="pulse"></span><span id="scanStatus">Passive scan running…</span></div>
-      <div class="observations" id="observations" aria-live="polite"></div>
-    </header>
+<body class="booting">
+  <section id="bootScreen" class="boot-screen" aria-live="polite">
+    <div id="sourceStage" class="source-stage">
+      <div class="editor-top">
+        <span class="editor-dot"></span><span class="editor-dot"></span><span class="editor-dot"></span>
+        <span class="editor-file">index.html</span>
+      </div>
+      <div class="editor-main">
+        <pre id="sourceNumbers" class="source-numbers" aria-hidden="true"></pre>
+        <pre id="sourceCode" class="source-code"></pre>
+      </div>
+      <div class="editor-status"><span>HTML</span><span>UTF-8</span><span>LF</span></div>
+    </div>
+    <div id="chatStage" class="chat-stage" hidden>
+      <pre id="chatTerminal" class="chat-terminal"></pre>
+    </div>
+  </section>
 
+  <main id="dossier" class="wrap dossier" hidden>
     <section class="summary" aria-label="scan summary">
       <article class="summary-card"><div class="kicker">Signals exposed</div><div class="summary-value" id="signalCount">0</div><div class="summary-note">Before I asked you for anything.</div></article>
       <article class="summary-card"><div class="kicker">I think you're using</div><div class="summary-value" id="deviceGuess">Analysing…</div><div class="summary-note" id="deviceConfidence">Inference, not a fact.</div></article>
@@ -36,11 +44,10 @@
       <article class="summary-card"><div class="kicker">Unmasked GPU vendor</div><div class="summary-value" id="topGpuVendor">Probing…</div><div class="summary-note">May be withheld by privacy protections.</div></article>
       <article class="summary-card"><div class="kicker">Preferred language</div><div class="summary-value" id="topLanguage">Reading…</div><div class="summary-note" id="topLanguageName">Browser locale preference.</div></article>
       <article class="summary-card"><div class="kicker">Do Not Track</div><div class="summary-value" id="topDNT">Reading…</div><div class="summary-note">A preference signal, not enforcement.</div></article>
-      <article class="summary-card"><div class="kicker">Browser shadow</div><div class="summary-value" id="fingerprint">Calculating…</div><div class="summary-note">Full local SHA-256 of a stable set of exposed traits. Never transmitted.</div></article>
+      <article class="summary-card"><div class="kicker">Browser shadow</div><div class="summary-value" id="fingerprint">Calculating…</div><div class="summary-note">Full local SHA-256 of exposed traits. Never transmitted by Spooks.</div></article>
     </section>
 
-    <div class="notice"><strong>Privacy note:</strong> GitHub Pages still has to receive the normal HTTPS request required to serve this file, so GitHub may see ordinary request metadata such as an IP address. The scanner uses only same-origin static files from this GitHub Pages site: no analytics, third-party APIs, external fonts, CDNs, tracking pixels, WebSockets, cookies, or storage writes. No discovered device value is placed into a network request. Everything displayed below is calculated locally in your browser.</div>
-    <div id="terminal" hidden></div>
+    <div class="notice"><strong>Privacy note:</strong> GitHub Pages has to receive the normal HTTPS requests needed to serve these files, so GitHub may see ordinary request metadata such as the source IP address. The JavaScript running on this page does not automatically receive that server-side IP value. Spooks uses no analytics, third-party APIs, external fonts, CDNs, tracking pixels, WebSockets, cookies, or storage writes, and does not place discovered device values into network requests. Everything in the dossier below is calculated locally in your browser.</div>
 
     <h2 class="section-title">What I can see without asking.</h2>
     <p class="section-sub">Expand the groups below. “Observed” means the browser handed the value to the page. “Inferred” means the page combined several observations and made a cautious guess.</p>
@@ -48,12 +55,12 @@
 
     <section class="consent" id="consent">
       <h2>I can ask for more.</h2>
-      <p>One click starts every deeper probe this browser supports. Your browser may show several separate permission dialogs — because these are separate security boundaries. Saying no to any of them is completely fine, and the page will show which doors stayed closed.</p>
+      <p>One click starts every deeper probe this browser supports. Your browser may show several separate permission dialogs because location, media, sensors and other capabilities are separate security boundaries.</p>
       <div class="door-list" aria-label="possible permission requests">
         <span class="door">precise location</span><span class="door">camera + microphone metadata + one still photo</span><span class="door">motion + orientation</span><span class="door">clipboard</span><span class="door">local fonts</span><span class="door">multi-screen details</span><span class="door">idle / lock state</span><span class="door">high-entropy browser hints</span>
       </div>
       <button id="deepButton">WILL YOU LET ME FIND OUT MORE?</button>
-      <p class="smallprint">If you allow camera access, Spooks will deliberately take one still photograph and display it locally on this page. It is not uploaded or saved. Microphone permission is used only for metadata; no microphone audio is sampled. The media stream is stopped immediately afterwards.</p>
+      <p class="smallprint">If you allow camera access, Spooks deliberately captures one still photograph for display inside the camera metadata section. It is held only in this page's memory, is not uploaded or saved, and disappears when you refresh or close the page. Microphone permission is metadata-only; no microphone audio is sampled.</p>
     </section>
 
     <section id="deepZone" hidden>
@@ -67,7 +74,7 @@
       </section>
       <figure class="capture" id="capturePanel" hidden>
         <img id="captureImage" alt="One still frame captured locally from the permitted camera">
-        <figcaption><strong>You let a web page see this.</strong> One camera frame was captured after you granted camera permission. It exists only in this page's memory, is never uploaded or saved, and disappears when you refresh or close the page.</figcaption>
+        <figcaption>Still photograph captured locally after camera permission. The image is held only in this page's memory, is not uploaded or saved, and disappears when you refresh or close the page.</figcaption>
       </figure>
       <section id="deepFacts"></section>
     </section>
@@ -79,10 +86,13 @@
         <div class="privacy-item"><div class="kicker">Storage writes</div><b>0</b></div>
         <div class="privacy-item"><div class="kicker">Cookies set by scanner</div><b>0</b></div>
       </div>
-      <p>This is a privacy demonstration, not a promise that the web is anonymous. GitHub necessarily serves the HTML, CSS and JavaScript files to you, so the host sees ordinary request metadata. After those static files load, the scanner does not deliberately transmit the values it discovers. Browser/OS privacy protections can deliberately fuzz or withhold values, extensions may modify what a page sees, and some APIs vary by browser. Refreshing the page discards the results because this application deliberately does not save them.</p>
+      <p>GitHub necessarily serves the static files to you, so the host sees ordinary request metadata. After those files load, Spooks does not deliberately transmit the values it discovers. Browser privacy protections can fuzz or withhold values, extensions may modify what a page sees, and some APIs vary by browser. Refreshing the page discards the results.</p>
     </footer>
-  </div>
+  </main>
 
+  <div id="scanState" hidden>
+    <span id="heroTitle"></span><span id="identityLine"></span><span id="scanStatus"></span><span id="observations"></span><span id="terminal"></span>
+  </div>
   <div id="safeProbe" class="hidden-probe" style="padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left)"></div>
 </body>
 </html>
