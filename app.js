@@ -3,16 +3,14 @@
   const S = window.Spooks;
   const collectedRemarks = [];
   const collectedSet = new Set();
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Keep scan-time remarks, but tell the story later in a deliberate order.
   S.say = message => {
     if (!message || collectedSet.has(message)) return;
     collectedSet.add(message);
     collectedRemarks.push(message);
   };
 
-  // Default-open behaviour is intentional rather than simply "first two groups".
-  // The camera group stays shut so the captured still is something the visitor discovers.
   const alwaysCollapsed = new Set([
     'Browser & OS',
     'Locale & time',
@@ -22,9 +20,7 @@
   ]);
 
   S.render = (root, data) => {
-    const previouslyOpen = new Set(
-      [...root.querySelectorAll('details[open]')].map(d => d.dataset.group)
-    );
+    const previouslyOpen = new Set([...root.querySelectorAll('details[open]')].map(d => d.dataset.group));
     root.textContent = '';
     const groups = new Map();
     for (const f of data) {
@@ -76,9 +72,6 @@
       root.append(details);
     }
 
-    // Once a camera still exists, tuck it underneath its own metadata row.
-    // Because the whole Camera & microphone metadata <details> starts collapsed,
-    // the image is only encountered when the visitor chooses to open that section.
     if (root === S.deepRoot) {
       const panel = document.getElementById('capturePanel');
       const stillRow = [...root.querySelectorAll('.row')].find(r =>
@@ -88,74 +81,39 @@
     }
   };
 
-  function installTerminal() {
-    document.querySelector('.hero-status')?.setAttribute('hidden', '');
-    document.getElementById('heroTitle')?.setAttribute('hidden', '');
-    document.getElementById('identityLine')?.setAttribute('hidden', '');
-    document.getElementById('observations')?.setAttribute('hidden', '');
-
-    const hero = document.querySelector('.hero');
-    const lede = hero?.querySelector('.lede');
-    if (!hero || !lede) return null;
-
-    const terminal = document.createElement('pre');
-    terminal.id = 'welcomeTerminal';
-    terminal.setAttribute('aria-live', 'polite');
-    terminal.setAttribute('aria-label', 'Live browser observations');
-    hero.insertBefore(terminal, lede);
-
-    const style = document.createElement('style');
-    style.textContent = `
-      #welcomeTerminal{margin:18px 0 20px;min-height:15.5em;max-height:46vh;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--green);font:600 clamp(.82rem,2.2vw,1.05rem)/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;text-shadow:0 0 16px rgba(110,255,181,.12)}
-      #welcomeTerminal.source-rush{color:#729b87;font-size:clamp(.58rem,1.6vw,.74rem);line-height:1.25;opacity:.88}
-      #welcomeTerminal .cursor{display:inline-block;width:.62em;height:1.05em;vertical-align:-.12em;background:var(--green);margin-left:.08em;animation:spooksBlink .75s steps(1,end) infinite}
-      @keyframes spooksBlink{50%{opacity:0}}
-      .capture{margin:10px 17px 16px;border:1px solid var(--line)!important;background:linear-gradient(180deg,rgba(13,21,19,.96),rgba(7,12,11,.96))!important;border-radius:14px;padding:12px;box-shadow:none!important}
-      .capture img{display:block;width:100%;max-height:70vh;object-fit:contain;border-radius:10px;background:#000}
-      .capture figcaption{font-size:.72rem;line-height:1.55;color:var(--muted)!important;margin-top:10px}
-      .capture strong{color:inherit!important}
-      @media(prefers-reduced-motion:reduce){#welcomeTerminal .cursor{animation:none}}
-    `;
-    document.head.appendChild(style);
-
-    const caption = document.querySelector('#capturePanel figcaption');
-    if (caption) caption.textContent = "Still photograph captured locally after camera permission. The image is held only in this page's memory, is not uploaded or saved, and disappears when you refresh or close the page.";
-    return terminal;
-  }
-
-  const terminal = installTerminal();
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const sourceStage = document.getElementById('sourceStage');
+  const sourceCode = document.getElementById('sourceCode');
+  const sourceNumbers = document.getElementById('sourceNumbers');
+  const chatStage = document.getElementById('chatStage');
+  const chatTerminal = document.getElementById('chatTerminal');
+  const bootScreen = document.getElementById('bootScreen');
+  const dossier = document.getElementById('dossier');
 
   async function sourceRush() {
-    if (!terminal) return;
-    terminal.classList.add('source-rush');
-    const source = document.documentElement.outerHTML;
-    const chunk = Math.max(180, Math.ceil(source.length / 38));
-    let shown = '';
-    for (let i = 0; i < source.length; i += chunk) {
-      shown += source.slice(i, i + chunk);
-      // Keep only the tail visible, but every real character passes through the terminal.
-      terminal.textContent = shown.slice(-7000);
-      terminal.scrollTop = terminal.scrollHeight;
-      await sleep(9);
+    const source = document.documentElement.outerHTML.replace(/></g, '>\n<');
+    const lines = source.split('\n');
+    const visible = 34;
+    let end = 0;
+
+    while (end < lines.length) {
+      end = Math.min(lines.length, end + 4);
+      const start = Math.max(0, end - visible);
+      const slice = lines.slice(start, end);
+      sourceCode.textContent = slice.join('\n');
+      sourceNumbers.textContent = slice.map((_, i) => String(start + i + 1).padStart(4, ' ')).join('\n');
+      await sleep(10);
     }
-    await sleep(80);
-    terminal.textContent = '';
-    terminal.classList.remove('source-rush');
+
+    await sleep(180);
+    sourceStage.classList.add('stage-out');
+    await sleep(220);
+    sourceStage.hidden = true;
+    chatStage.hidden = false;
+    chatStage.classList.add('stage-in');
+    await sleep(180);
   }
 
-  async function typeLine(text, speed = 12) {
-    if (!terminal || !text) return;
-    const base = terminal.textContent;
-    for (let i = 0; i < text.length; i++) {
-      terminal.textContent = base + text.slice(0, i + 1) + '▌';
-      await sleep(speed);
-    }
-    terminal.textContent = base + text + '\n';
-    await sleep(90);
-  }
-
-  async function waitUntil(test, timeout = 5000, interval = 50) {
+  async function waitUntil(test, timeout = 6500, interval = 40) {
     const start = performance.now();
     while (performance.now() - start < timeout) {
       const value = test();
@@ -165,17 +123,37 @@
     return null;
   }
 
-  function greetingWithFingerprint() {
-    const now = new Date();
-    const h = now.getHours() + now.getMinutes() / 60;
-    let greeting;
-    if (h < 4.5) greeting = "Gosh, you're up early.";
-    else if (h < 6.5) greeting = "You're up suspiciously early.";
-    else if (h >= 11.5 && h < 13.5) greeting = 'What have you got for lunch?';
-    else if (h >= 23) greeting = 'Still awake?';
-    else greeting = h < 12 ? 'Good morning.' : h < 18 ? 'Good afternoon.' : 'Good evening.';
-    const fp = document.getElementById('fingerprint')?.textContent || 'UNKNOWN';
-    return `${greeting} Fingerprint ${fp}.`;
+  async function typeLine(text, pauseAfter = 650, charDelay = 24) {
+    if (!text) return;
+    const line = document.createElement('div');
+    line.className = 'chat-line';
+    const prompt = document.createElement('span');
+    prompt.className = 'chat-prompt';
+    prompt.textContent = '> ';
+    const words = document.createElement('span');
+    const cursor = document.createElement('span');
+    cursor.className = 'chat-cursor';
+    line.append(prompt, words, cursor);
+    chatTerminal.append(line);
+
+    for (const ch of text) {
+      words.textContent += ch;
+      chatTerminal.scrollTop = chatTerminal.scrollHeight;
+      const jitter = ch === ' ' ? 0 : Math.floor(Math.random() * 11) - 5;
+      await sleep(Math.max(7, charDelay + jitter));
+    }
+    cursor.remove();
+    await sleep(pauseAfter);
+  }
+
+  function greeting() {
+    const d = new Date();
+    const h = d.getHours() + d.getMinutes() / 60;
+    if (h < 4.5) return "Gosh, you're up early.";
+    if (h < 6.5) return "You're up suspiciously early.";
+    if (h >= 11.5 && h < 13.5) return 'What have you got for lunch?';
+    if (h >= 23) return 'Still awake?';
+    return h < 12 ? 'Good morning.' : h < 18 ? 'Good afternoon.' : 'Good evening.';
   }
 
   function languageLine() {
@@ -199,7 +177,7 @@
     return `Your graphics stack identifies its vendor as ${gpu}.`;
   }
 
-  function phoneShapeLine() {
+  function deviceShapeLine() {
     const shortSide = Math.min(screen.width, screen.height);
     const longSide = Math.max(screen.width, screen.height);
     const dpr = devicePixelRatio || 1;
@@ -228,89 +206,105 @@
     const f = S.facts.find(x => x.group === 'Network & connectivity' && x.label === 'Public IP');
     if (!f) return;
     f.value = 'Doable, but intentionally not queried';
-    f.note = "A reliable lookup would contact another service. GitHub's server necessarily sees the IP address used to request this page, but the JavaScript running here does not receive that server-side request value. Spooks is dedicated to displaying information your browser reveals directly to the code running locally on this page.";
-  }
-
-  function extraRemarks() {
-    const lines = [];
-    const hour = new Date().getHours();
-    const hz = S.facts.find(f => f.group === 'Hardware clues' && f.label === 'Observed animation cadence');
-    const mem = S.facts.find(f => f.group === 'Hardware clues' && f.label === 'Approximate device memory');
-    const gamepads = S.facts.find(f => f.group === 'Attached / exposed peripherals' && f.label === 'Gamepads');
-    const connection = S.facts.find(f => f.group === 'Network & connectivity' && f.label === 'Effective connection type');
-
-    if (matchMedia?.('(prefers-reduced-motion:reduce)').matches) lines.push("You prefer reduced motion. I'll try not to be dramatic about it.");
-    if (navigator.globalPrivacyControl) lines.push('Global Privacy Control is enabled too.');
-    if (hz && /(?:100|120|144|165|240)/.test(hz.value)) lines.push(`Your page is refreshing at about ${hz.value.replace('≈ ', '')}. Fancy.`);
-    if (mem && !/not exposed/i.test(mem.value)) lines.push(`Your browser reports roughly ${mem.value}.`);
-    if (gamepads && !/^None exposed$/i.test(gamepads.value)) lines.push(`You left a gamepad connected: ${gamepads.value}.`);
-    if (connection && /(?:slow-2g|2g|3g)/i.test(connection.value)) lines.push('Your connection looks a little sleepy.');
-    if (navigator.hardwareConcurrency >= 12) lines.push(`${navigator.hardwareConcurrency} logical processor threads exposed. Plenty.`);
-    if (history.length > 1) lines.push(`This tab reports ${history.length} entries in its session history.`);
-    if (hour >= 14 && hour < 17) lines.push('Afternoon procrastination detected. Probably.');
-    else if (hour >= 21 && hour < 23) lines.push('A perfectly sensible time to let a strange webpage inspect your device.');
-    return lines;
+    f.note = "GitHub's server necessarily sees the source IP address used to request this page, but that server-side value is not automatically exposed to the JavaScript running here. A reliable client-side lookup would contact another service. This page is dedicated to displaying information your browser reveals directly to the code running locally.";
   }
 
   function isPriorityDuplicate(message) {
-    const m = message.toLowerCase();
-    return m.includes('dark mode') ||
-      m.includes('british english') ||
-      m.includes('written in english') ||
-      m.includes('referring page') ||
-      m.includes('do not track') ||
-      m.includes('graphics stack') ||
-      m.includes('touch point') ||
-      m.includes('phone-shaped') ||
-      m.includes('battery') ||
-      m.includes('fingerprint');
+    const m = String(message).toLowerCase();
+    return m.includes('dark mode') || m.includes('light mode') ||
+      m.includes('british english') || m.includes('written in english') ||
+      m.includes('referring page') || m.includes('do not track') ||
+      m.includes('graphics stack') || m.includes('graphics vendor') ||
+      m.includes('touch point') || m.includes('phone-shaped') ||
+      m.includes('battery') || m.includes('fingerprint') ||
+      m.includes('passive scan');
   }
 
-  async function narrative(scanPromise, rushPromise) {
-    await waitUntil(() => {
-      const f = document.getElementById('fingerprint')?.textContent;
-      return f && !/calculating/i.test(f) ? f : null;
-    }, 4000);
-    await rushPromise;
+  function extraRemarks() {
+    const out = [];
+    const hz = S.facts.find(f => f.group === 'Hardware clues' && f.label === 'Observed animation cadence');
+    const gamepads = S.facts.find(f => f.group === 'Attached / exposed peripherals' && f.label === 'Gamepads');
+    const connection = S.facts.find(f => f.group === 'Network & connectivity' && f.label === 'Effective connection type');
+    if (matchMedia?.('(prefers-reduced-motion:reduce)').matches) out.push("You prefer reduced motion. I'll try not to be dramatic about it.");
+    if (navigator.globalPrivacyControl) out.push('Global Privacy Control is enabled too.');
+    if (hz && /(?:100|120|144|165|240)/.test(hz.value)) out.push(`Your page is refreshing at about ${hz.value.replace('≈ ', '')}. Fancy.`);
+    if (gamepads && !/^None exposed$/i.test(gamepads.value)) out.push(`You left a gamepad connected: ${gamepads.value}.`);
+    if (connection && /(?:slow-2g|2g|3g)/i.test(connection.value)) out.push('Your connection looks a little sleepy.');
+    if (navigator.hardwareConcurrency >= 12) out.push(`${navigator.hardwareConcurrency} logical processor threads exposed. Plenty.`);
+    return out;
+  }
 
-    await typeLine(greetingWithFingerprint(), 8);
+  async function terminalConversation(scanPromise) {
+    await typeLine(greeting(), 850, 34);
 
-    if (matchMedia?.('(prefers-color-scheme:dark)').matches) await typeLine("I'm a dark mode user too.");
-    else if (matchMedia?.('(prefers-color-scheme:light)').matches) await typeLine("You're using light mode. Brave choice.");
+    const fp = await waitUntil(() => {
+      const value = document.getElementById('fingerprint')?.textContent;
+      return value && !/calculating/i.test(value) ? value : null;
+    });
+    await typeLine(`I'll fingerprint you as ${fp || 'UNKNOWN'}.`, 1050, 17);
 
-    await typeLine(languageLine());
-    if (!document.referrer) await typeLine("You didn't arrive with a referring page I can see.");
-    else await typeLine(`You arrived from ${document.referrer}.`);
-    await typeLine(dntLine());
+    if (matchMedia?.('(prefers-color-scheme:dark)').matches) await typeLine("I'm a dark mode user too.", 760, 29);
+    else if (matchMedia?.('(prefers-color-scheme:light)').matches) await typeLine("You're using light mode.", 760, 29);
 
-    const gpu = await waitUntil(graphicsLine, 4500);
-    if (gpu) await typeLine(gpu);
-    await typeLine(phoneShapeLine());
+    await typeLine(languageLine(), 820, 25);
+
+    if (!document.referrer) await typeLine("You didn't arrive with a referring page I can see.", 780, 23);
+    else await typeLine(`You arrived from ${document.referrer}.`, 780, 16);
+
+    await typeLine(dntLine(), 800, 24);
+
+    const gpu = await waitUntil(graphicsLine, 5000);
+    if (gpu) await typeLine(gpu, 760, 20);
+
+    await typeLine(deviceShapeLine(), 820, 18);
 
     await scanPromise;
     rewritePublicIPFact();
     S.render(S.factRoot, S.facts);
 
     const battery = batteryLine();
-    if (battery) await typeLine(battery);
+    if (battery) await typeLine(battery, 850, 25);
 
-    const rest = [...collectedRemarks, ...extraRemarks()]
-      .filter(m => !isPriorityDuplicate(m));
+    const rest = [...collectedRemarks, ...extraRemarks()].filter(m => !isPriorityDuplicate(m));
     const seen = new Set();
-    for (const message of rest) {
+    for (const message of rest.slice(0, 6)) {
       if (!message || seen.has(message)) continue;
       seen.add(message);
-      await typeLine(message);
+      await typeLine(message, 620, 20);
     }
+
+    await typeLine("You haven't given me permission to know anything yet.", 1100, 28);
+    await typeLine("I'm going to see what your browser gives away anyway.", 1250, 25);
+  }
+
+  async function revealDossier() {
+    chatStage.classList.add('stage-out');
+    await sleep(360);
+    bootScreen.classList.add('boot-dismiss');
+    dossier.hidden = false;
+    document.body.classList.remove('booting');
+    requestAnimationFrame(() => dossier.classList.add('dossier-visible'));
+    await sleep(420);
+    bootScreen.hidden = true;
+    window.scrollTo({top: 0, behavior: 'instant'});
   }
 
   document.getElementById('deepButton').addEventListener('click', () => S.deepScan(), {once:true});
 
-  // The source display and passive scan genuinely happen at the same time.
-  const rushPromise = sourceRush();
   const scanPromise = S.passiveScan().catch(e => {
     S.log(`passive scan error: ${e.name || e}`, 'warn');
     S.render(S.factRoot, S.facts);
   });
-  narrative(scanPromise, rushPromise).catch(e => S.log(`welcome terminal error: ${e.name || e}`, 'warn'));
+
+  (async () => {
+    await sourceRush();
+    await terminalConversation(scanPromise);
+    await revealDossier();
+  })().catch(async e => {
+    S.log(`boot conversation error: ${e.name || e}`, 'warn');
+    await scanPromise;
+    rewritePublicIPFact();
+    S.render(S.factRoot, S.facts);
+    await revealDossier();
+  });
 })();
