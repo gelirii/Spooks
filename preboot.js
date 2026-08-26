@@ -1,60 +1,58 @@
 'use strict';
 (() => {
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
   function loadMain() {
     const s = document.createElement('script');
-    s.src = 'app.js?v=20260826c';
+    s.src = 'app.js?v=20260826d';
     s.async = false;
     document.head.appendChild(s);
   }
 
   async function run() {
+    // Author CSS can override the browser's default [hidden] rule. On Safari the
+    // chat layer's display:flex was therefore sitting over the editor as a black
+    // sheet. Make hidden absolute for the two boot stages before the first paint.
+    const fix = document.createElement('style');
+    fix.textContent = `
+      #chatStage[hidden], #sourceStage[hidden] { display:none !important; }
+      #sourceStage:not([hidden]) { display:block !important; opacity:1 !important; }
+    `;
+    document.head.appendChild(fix);
+
     const stage = document.getElementById('sourceStage');
     const code = document.getElementById('sourceCode');
     const nums = document.getElementById('sourceNumbers');
     const chat = document.getElementById('chatStage');
+
     if (!stage || !code || !nums) return loadMain();
 
     stage.hidden = false;
     stage.classList.remove('stage-out');
-    stage.style.opacity = '1';
-    stage.style.transform = 'none';
     if (chat) chat.hidden = true;
 
-    // Use the real DOM source already loaded in this tab. Break tags and common
-    // attributes onto separate lines so it reads like recognisable HTML in an editor.
-    const raw = '<!doctype html>\n' + document.documentElement.outerHTML
-      .replace(/></g, '>\n<')
-      .replace(/ (class|id|src|href|aria-[\w-]+|data-[\w-]+)=/g, '\n  $1=');
-    const lines = raw.split('\n').filter(Boolean);
-    const visible = Math.max(20, Math.min(38, Math.floor((innerHeight - 70) / 20)));
+    // Put genuine recognisable source on screen immediately, before app.js starts
+    // the animated scroll. This guarantees the first painted boot frame isn't blank.
+    const initial = [
+      '<!doctype html>',
+      '<html lang="en">',
+      '<head>',
+      '  <meta charset="utf-8">',
+      '  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">',
+      '  <title>Spooks — Browser Interrogation</title>',
+      '  <link rel="stylesheet" href="style.css">',
+      '  <script defer src="core.js"><\/script>',
+      '  <script defer src="passive.js"><\/script>',
+      '  <script defer src="deep.js"><\/script>',
+      '</head>',
+      '<body class="booting">'
+    ];
+    code.textContent = initial.join('\n');
+    nums.textContent = initial.map((_, i) => String(i + 1).padStart(4, ' ')).join('\n');
 
-    // Force at least two browser paints before moving anything. This matters on iOS Safari.
+    // Let Safari paint the editor and the initial source before the main boot
+    // animation starts. app.js then performs the single real source scroll.
     await new Promise(requestAnimationFrame);
     await new Promise(requestAnimationFrame);
-
-    let end = Math.min(visible, lines.length);
-    function paint() {
-      const start = Math.max(0, end - visible);
-      const slice = lines.slice(start, end);
-      code.textContent = slice.join('\n');
-      nums.textContent = slice.map((_, i) => String(start + i + 1).padStart(4, ' ')).join('\n');
-    }
-
-    paint();
-    await sleep(650);
-
-    // Scroll at a rate humans can actually notice, not just timers can execute.
-    while (end < lines.length) {
-      end = Math.min(lines.length, end + 1);
-      paint();
-      await sleep(46);
-    }
-
-    // Hold the last screen long enough to register before app.js takes over.
-    await sleep(650);
-    loadMain();
+    setTimeout(loadMain, 140);
   }
 
   run().catch(loadMain);
